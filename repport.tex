@@ -1,0 +1,37 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, graphicx,hyperref, caption}
+\usepackage{geometry}
+\geometry{margin=1.5cm}
+
+\title{\textbf{Mini-rapport : Coloration par tons d'un graphe}}
+\author{Moucer Bahdja, Abib Alicia, Guenoun Dalil}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+Ce projet porte sur la \textit{coloration par tons} d'un graphe, une généralisatio, de la coloration classique
+où chaque sommet reçoit plusieurs couleurs. L'objectif est de déterminer, pour un graphe donné
+et un paramètre $b$, le plus ptit entier $a$ tel que graphe admette une $(a,b)$-coloration oar tons.
+Cetteproblématique s'inscrit dans le cadre de la théorie des graphes et trouve des applications en télécommunications
+et codage.
+
+\section*{Travail rélaisé}
+Les graphes ont été codé en langage \textbf{[C++]} sous forme de matrice d'adjacence.
+Des versions modifiées des algorithmes \textbf{Glouton}, \textbf{DSATUR} et \textbf{exact} ont été adaptée à la $(a,b)$-coloration : 
+chaque sommet se voit attribuer $b$ couleurs, en respectant la contrainte $|\varphi(x) \cap \varphi(y)| < d(x, y)$.
+
+\medskip
+Les principale étapes : 
+\begin{itemize}
+    \item Génération du graphe (aléatoire ou à partir de cas classiques comme cycles, arbres, etc.)
+    \item Calcul des distances $d(x,y)$ pour tous les couples de sommets
+    \item Implémentation d’un algorithme glouton pour tester différentes valeurs de $a$
+    \item Optimisation en réduisant les conflits et en testant plusieurs heuristiques
+\end{itemize}
+
+\end{document}
