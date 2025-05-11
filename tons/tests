@@ -1,0 +1,15 @@
+#!/bin/sh
+
+for i in 6 10 20 50 100; do
+	for j in 1 2 3; do
+		echo
+		echo "n = $i, b = $j, p = 50%"
+		echo "Sur circulant n = $i, b = $j"
+		echo "Algo glouton: "
+		time ./tons -n $i -b $j -glou &&
+		echo "Algo DSATUR"
+		time ./tons -n $i -b $j  -dsa &&
+		echo "Algo exact"
+		time ./tons -n $i -b $j -exact
+	done
+done

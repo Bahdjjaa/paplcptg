@@ -175,7 +175,7 @@ colorback(List **coul, int x, int k, int *stop)
 	else{
 		for(c = 1; c <= k; c++){
 			if(convient(coul, x, c)){
-				printf("coul som %d %d\n", x, c);
+				//printf("coul som %d %d\n", x, c);
 				coul[x] = addfront(coul[x], newitem(c));
 				colorback(coul, x+1, k, stop);
 				if(*stop)
@@ -264,7 +264,7 @@ dsatur(List **coul, int b)
 				nc = c;
 			dsat[s] = -1;
 			actuvois(dsat, coul);
-			prttabdsat(dsat, s, c);
+			//prttabdsat(dsat, s, c);
 		}
 	}
 	return nc;
@@ -290,24 +290,52 @@ freemat(int **mat)
 	free(mat);
 }
 
-int
-main()
+void
+exec(int (*algo)(List**, int), List **coul, int b, int v)
 {
-	n = 7;
-	srand((unsigned)time(NULL));
-	adj = initmat(n);
-	coul = initlc(n);
-	dist = initmat(n);
-
-	gengraphcycle(n);
-	affgraph(n);
+	int nchrom;
 
 	initdist(dist);
+	if(v)
+		affgraph(n);
+	nchrom = (*algo)(coul, b);
+	if(v)
+		prtlc(coul);
+	printf("Nombre chromatique %d\n", nchrom);
+}
 
-	//colorglouton(colbak, 3);
-	printf("nbchroma : %d\n", colexact(coul, 2));
-	prtlc(coul);
+int
+main(int argc, char **argv)
+{
+	int i, b, v;
 
+	srand((unsigned)time(NULL));
+	b = 1;
+	n = v = 0;
+	if(argc < 2)
+		fprintf(stderr, "usage: tons [-n N] [-p P] [-b B] [-vgde]\n");
+	else{
+		for(i = 0; i < argc; i++){
+			if(memcmp(argv[i], "-n", 2) == 0){
+				n = atoi(argv[++i]);
+				adj = initmat(n);
+				coul = initlc(n);
+				dist = initmat(n);
+				gengraphcycle(n);
+			}else if(memcmp(argv[i], "-p", 2) == 0 && n)
+				gengraph(n, atoi(argv[++i]));
+			else if(memcmp(argv[i], "-v", 2) == 0)
+				v = 1;
+			else if(memcmp(argv[i], "-b", 2) == 0 && n)
+				b = atoi(argv[++i]);
+			else if(memcmp(argv[i], "-glouton", strlen(argv[i])) == 0 && n)
+				exec(colorglouton, coul, b, v);
+			else if(memcmp(argv[i], "-dsatur", strlen(argv[i])) == 0 && n)
+				exec(dsatur, coul, b, v);
+			else if(memcmp(argv[i], "-exact", strlen(argv[i])) == 0 && n)
+				exec(colexact, coul, b, v);
+		}
+	}
 	freelc(coul);
 	freemat(adj);
 	freemat(dist);
