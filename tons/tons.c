@@ -3,10 +3,10 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include "lcol.h"
+#include "list.h"
 
-int **adj, n;
-Lcol **coul;
+int **adj, **dist, n;
+List **coul;
 
 int**
 initmat(int n)
@@ -19,13 +19,12 @@ initmat(int n)
 	return mat;
 }
 
-Lcol**
+List**
 initlc(int n)
 {
-	int i;
-	Lcol **lc;
+	List **lc;
 
-	lc = ecalloc(n, sizeof(Lcol*));
+	lc = ecalloc(n, sizeof(List*));
 	return lc;
 }
 
@@ -34,9 +33,17 @@ gengraph(int n, int p)
 {
 	int i, j;
 
-	for(i = 0; i < n; i++)
+	/*for(i = 0; i < n; i++)
 		for(j = 0; j < n; j++)
-			adj[i][j] = adj[j][i] = (rand() % 100 < p && i != j);
+			adj[i][j] = adj[j][i] = (rand() % 100 < p && i != j);*/
+	adj[0][1] = adj[1][0] = 1;
+	adj[0][6] = adj[6][0] = 1;
+	adj[1][2] = adj[2][1] = 1;
+	adj[1][5] = adj[5][1] = 1;
+	adj[2][3] = adj[3][2] = 1;
+	adj[3][4] = adj[4][3] = 1;
+	adj[4][5] = adj[5][4] = 1;
+	adj[5][6] = adj[6][5] = 1;
 }
 
 void
@@ -48,6 +55,38 @@ initdeg(int *deg)
 	for(i = 0; i < n; i++)
 		for(j = 0; j < n; j++)
 			deg[i] += adj[i][j];
+}
+
+void
+bfs(int s, int *dist)
+{
+	int x, y, vis[n];
+	List *q;	/* file */
+
+	memset(vis, -1, n * sizeof(int));
+	vis[s] = dist[s] = 0;
+	q = newitem(s);
+	while(q != NULL){
+		x = q->val;
+		q = delitem(q, 0);
+		for(y = 0; y < n; y++){
+			if(adj[x][y] && vis[y] == -1){
+				q = addend(q, newitem(y));
+				vis[y] = 1;
+				dist[y] = dist[x]+1;
+			}
+		}
+	}
+}
+
+void
+initdist(int **dist)
+{
+	int i;
+
+	/* calcul distances pour chaque sommet */
+	for(i = 0; i < n; i++)
+		bfs(i, dist[i]);
 }
 
 void
@@ -66,7 +105,7 @@ affgraph(int n)
 }
 
 void
-prtlc(Lcol **lc)
+prtlc(List **lc)
 {
 	int i;
 
@@ -77,34 +116,54 @@ prtlc(Lcol **lc)
 	}
 }
 
+/* |phi(x) intersection phi(y)| < d(x, y)*/
 int
-convient(Lcol **coul, int x, int c)
+condtons(List **coul, int x, int c)
 {
-	int i;
-	Lcol *p;
+	int y;
+	List *p;
 
-	/* verif coulo des voisins de x */
-	for(i = 0; i < n; i++)
-		if(adj[x][i] && ((p = lookup(coul[i], c)) != NULL) && i != x)
+	if((p = lookup(coul[x], c)) != NULL)
+		return 0;
+	for(y = 0; y < n; y++){
+		if(x == y)
+			continue;
+		if((cardinter(coul[x], coul[y]) > dist[x][y]))
+			return 0;
+	}
+	return 1;
+}
+
+int
+convient(List **coul, int x, int c)
+{
+	int y;
+	List *p;
+
+	if(condtons(coul, x, c) == 0)
+		return 0;
+	for(y = 0; y < n; y++)
+		if(adj[x][y] && ((p = lookup(coul[y], c)) != NULL) && x != y)
 			return 0;
 	return 1;
 }
 
 /* coloration gloutonne */
 int
-colorsom(Lcol **coul, int x)
+colorsom(List **coul, int x)
 {
 	int c;
 
-	for(c = 1; convient(coul, x, c) == 0; c++)
-		;
-	coul[x] = addend(coul[x], newitem(c));	/* plus petite coul dispo */
+		for(c = 1; convient(coul, x, c) == 0; c++)
+			;
+		coul[x] = addend(coul[x], newitem(c));
+
 	return c;
 }
 
 /* k-coloration, backtracking */
 void
-colorback(Lcol **coul, int x, int k, int *stop)
+colorback(List **coul, int x, int k, int *stop)
 {
 	int c;
 
@@ -112,9 +171,10 @@ colorback(Lcol **coul, int x, int k, int *stop)
 		*stop = 1;
 	else{
 		for(c = 1; c <= k; c++){
+			printf("ok? %d\n", convient(coul, x, c));
 			if(convient(coul, x, c)){
-				//printf("coul som %d %d\n", x, c);
-				coul[x] = c;
+				printf("coul som %d %d\n", x, c);
+				coul[x] = addend(coul[x], newitem(c));
 				colorback(coul, x+1, k, stop);
 				if(*stop)
 					return;
@@ -124,29 +184,32 @@ colorback(Lcol **coul, int x, int k, int *stop)
 }
 
 int
-colexact(Lcol **coul)
+colexact(List **coul, int b)
 {
 	int k, stop;
 
 	for(k = stop = 0; k < n && stop == 0; k++){
-		memset(coul, 0, n * sizeof(int));
+
 		colorback(coul, 0, k, &stop);
-		if(stop == 0)
+		if(stop == 0){
 			printf("Pas de coloration en %d couleurs\n", k);
+
+		}
 	}
 	return k-1;	/* k-colo, nb chromatique */
 }
 
 int
-colorglouton(Lcol **coul)
+colorglouton(List **coul, int b)
 {
-	int i, c, nc;
+	int i, j, c, nc;
 
 	nc = 0;
-	memset(coul, 0, n * sizeof(int));
-	for(i = 0; i < n; i++)
-		if((c = colorsom(coul, i)) > nc)
-			nc = c;
+	for(i = 0; i < b; i++){
+		for(j = 0; j < n; j++)
+			if((c = colorsom(coul, j)) > nc)
+				nc = c;
+	}
 	return nc;
 }
 
@@ -174,41 +237,43 @@ maxdsat(int *dsat, int *deg)
 }
 
 void
-actuvois(int *dsat, Lcol **coul)
+actuvois(int *dsat, List **coul)
 {
 	int i, j, c;
 
 	for(i = 0; i < n; i++){
 		/* compte coul voisines à i */
 		for(j = 0, c = 0; j < n; j++)
-			if(adj[i][j] && coul[j] > 0)
-				c++;
+			if(adj[i][j])
+				apply(coul[j], count, &c);
 		if(c > 0 && dsat[i] > -1)
 			dsat[i] = c;	/* reste deg[i] si aucun voisin color */
 	}
 }
 
 int
-dsatur(Lcol **coul)
+dsatur(List **coul, int b)
 {
-	int s, c, nc, soc, dsat[n], deg[n];
+	int i, s, c, nc, soc, dsat[n], deg[n];
 
 	initdeg(deg);
-	memset(coul, 0, n * sizeof(int));
-	memmove(dsat, deg, n * sizeof(int));
-	for (soc = nc = 0; soc < n; soc++){
-		s = maxdsat(dsat, deg);
-		if((c = colorsom(coul, s)) > nc)
-			nc = c;
-		dsat[s] = -1;
+	for(i = 0; i < b; i++){
+		memmove(dsat, deg, n * sizeof(int));
 		actuvois(dsat, coul);
-		prttabdsat(dsat, s, c);
+		for (soc = nc = 0; soc < n; soc++){
+			s = maxdsat(dsat, deg);
+			if((c = colorsom(coul, s)) > nc)
+				nc = c;
+			dsat[s] = -1;
+			actuvois(dsat, coul);
+			prttabdsat(dsat, s, c);
+		}
 	}
 	return nc;
 }
 
 void
-freelc(Lcol **lc)
+freelc(List **lc)
 {
 	int i;
 
@@ -230,29 +295,25 @@ freemat(int **mat)
 int
 main()
 {
-	int i;
+	int i, j;
 
-	n = 8;
+	n = 7;
 	srand((unsigned)time(NULL));
 	adj = initmat(n);
+	coul = initlc(n);
+	dist = initmat(n);
+
 	gengraph(n, 50);
 	affgraph(n);
 
-	coul = initlc(n);
-	coul[0] = addend(coul[0], newitem(11));
-	apply(coul[0], printv, "%d ");
+	initdist(dist);
+
+	//colorglouton(coul, 3);
+	printf("nbchroma : %d\n", dsatur(coul, 2));
+	prtlc(coul);
 
 	freelc(coul);
-	freemat(mat);
-//	colorglouton(coul);
-//	prtlc(coul);
-
-	/*printf("nbchroma : %d\n", colexact(coul1));
-	for(i = 0; i < n; i++)
-		printf("couleur de %d : %d\n", i, coul1[i]);
-	colorglouton(coul2);
-	for(i = 0; i < n; i++)
-		printf("(glout) col %d : %d deg %d\n", i, coul2[i], deg[i]);
-	printf("nb coul (dsatur) : %d\n", dsatur(coul3));*/
+	freemat(adj);
+	freemat(dist);
 	return 0;
 }

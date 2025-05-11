@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lcol.h"
+#include "list.h"
 
 void*
 emalloc(unsigned n)
@@ -27,28 +27,28 @@ ecalloc(unsigned nm, unsigned n)
 	return p;
 }
 
-Lcol*
+List*
 newitem(int val)
 {
-	Lcol *newp;
+	List *newp;
 
-	newp = (Lcol *)emalloc(sizeof(Lcol));
+	newp = (List *)emalloc(sizeof(List));
 	newp->val = val;
 	newp->next = NULL;
 	return newp;
 }
 
-Lcol*
-addfront(Lcol *lp, Lcol *newp)
+List*
+addfront(List *lp, List *newp)
 {
 	newp->next = lp;
 	return newp;
 }
 
-Lcol*
-addend(Lcol *lp, Lcol *newp)
+List*
+addend(List *lp, List *newp)
 {
-	Lcol *p;
+	List *p;
 
 	if(lp == NULL)
 		return newp;
@@ -59,8 +59,30 @@ addend(Lcol *lp, Lcol *newp)
 	return lp;
 }
 
-Lcol*
-lookup(Lcol *lp, int val)
+List*
+delitem(List *lp, int n)
+{
+	int i;
+	List *p, *prev;
+
+	prev = NULL;
+	for(i = 0, p = lp; p != NULL; p = p->next, i++){
+		if(i == n){
+			if(prev == NULL)
+				lp = p->next;
+			else
+				prev->next = p->next;
+			free(p);
+			return lp;
+		}
+		prev = p;
+	}
+	return NULL;
+}
+
+
+List*
+lookup(List *lp, int val)
 {
 	for( ; lp != NULL; lp = lp->next)
 		if(val == lp->val)
@@ -69,14 +91,14 @@ lookup(Lcol *lp, int val)
 }
 
 void
-apply(Lcol *lp, void (*fn)(Lcol*, void*), void *arg)
+apply(List *lp, void (*fn)(List*, void*), void *arg)
 {
 	for( ; lp != NULL; lp = lp->next)
 		(*fn)(lp, arg);
 }
 
 void
-printv(Lcol *p, void *arg)
+printv(List *p, void *arg)
 {
 	char *fmt;
 
@@ -85,7 +107,7 @@ printv(Lcol *p, void *arg)
 }
 
 void
-count(Lcol *p, void *arg)
+count(List *p, void *arg)
 {
 	int *i;
 
@@ -93,10 +115,24 @@ count(Lcol *p, void *arg)
 	(*i)++;
 }
 
-void
-freeall(Lcol *lp)
+int
+cardinter(List *lg, List *ld)
 {
-	Lcol *next;
+	int i;
+	List *p;
+
+	/* |lg intersection ld| */
+	for(i = 0; lg != NULL; lg = lg->next)
+		for(p = ld ; p != NULL; p = p->next)
+			if(lg->val == p->val)
+				i++;
+	return i;
+}
+
+void
+freeall(List *lp)
+{
+	List *next;
 
 	for( ; lp != NULL; lp = next){
 		next = lp->next;

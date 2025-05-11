@@ -4,10 +4,10 @@ CFLAGS=
 CDFLAGS=-Wall -Wextra -g
 
 HFILES=\
-	lcol.h\
+	list.h\
 
 OBJS=\
-	lcol.o\
+	list.o\
 	tons.o\
 
 .PHONY: all default clean
