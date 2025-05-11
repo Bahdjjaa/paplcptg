@@ -33,17 +33,20 @@ gengraph(int n, int p)
 {
 	int i, j;
 
-	/*for(i = 0; i < n; i++)
+	for(i = 0; i < n; i++)
 		for(j = 0; j < n; j++)
-			adj[i][j] = adj[j][i] = (rand() % 100 < p && i != j);*/
-	adj[0][1] = adj[1][0] = 1;
-	adj[0][6] = adj[6][0] = 1;
-	adj[1][2] = adj[2][1] = 1;
-	adj[1][5] = adj[5][1] = 1;
-	adj[2][3] = adj[3][2] = 1;
-	adj[3][4] = adj[4][3] = 1;
-	adj[4][5] = adj[5][4] = 1;
-	adj[5][6] = adj[6][5] = 1;
+			adj[i][j] = adj[j][i] = (rand() % 100 < p && i != j);
+}
+
+void
+gengraphcycle(int n)
+{
+	int i, j;
+
+	for(i = 0; i < n; i++){
+		j = (i+1) % n;
+		adj[i][j] = adj[j][i] = 1;
+	}
 }
 
 void
@@ -143,7 +146,7 @@ convient(List **coul, int x, int c)
 	if(condtons(coul, x, c) == 0)
 		return 0;
 	for(y = 0; y < n; y++)
-		if(adj[x][y] && ((p = lookup(coul[y], c)) != NULL) && x != y)
+		if(adj[x][y] && ((p = lookup(coul[y], c)) != NULL))
 			return 0;
 	return 1;
 }
@@ -171,13 +174,13 @@ colorback(List **coul, int x, int k, int *stop)
 		*stop = 1;
 	else{
 		for(c = 1; c <= k; c++){
-			printf("ok? %d\n", convient(coul, x, c));
 			if(convient(coul, x, c)){
 				printf("coul som %d %d\n", x, c);
-				coul[x] = addend(coul[x], newitem(c));
+				coul[x] = addfront(coul[x], newitem(c));
 				colorback(coul, x+1, k, stop);
 				if(*stop)
 					return;
+				coul[x] = delitem(coul[x], 0);
 			}
 		}
 	}
@@ -186,16 +189,11 @@ colorback(List **coul, int x, int k, int *stop)
 int
 colexact(List **coul, int b)
 {
-	int k, stop;
+	int i, k, stop;
 
-	for(k = stop = 0; k < n && stop == 0; k++){
-
-		colorback(coul, 0, k, &stop);
-		if(stop == 0){
-			printf("Pas de coloration en %d couleurs\n", k);
-
-		}
-	}
+	for(i = 0; i < b; i++)
+		for(k = stop = 0; stop == 0; k++)
+			colorback(coul, 0, k, &stop);
 	return k-1;	/* k-colo, nb chromatique */
 }
 
@@ -295,21 +293,19 @@ freemat(int **mat)
 int
 main()
 {
-	int i, j;
-
 	n = 7;
 	srand((unsigned)time(NULL));
 	adj = initmat(n);
 	coul = initlc(n);
 	dist = initmat(n);
 
-	gengraph(n, 50);
+	gengraphcycle(n);
 	affgraph(n);
 
 	initdist(dist);
 
-	//colorglouton(coul, 3);
-	printf("nbchroma : %d\n", dsatur(coul, 2));
+	//colorglouton(colbak, 3);
+	printf("nbchroma : %d\n", colexact(coul, 2));
 	prtlc(coul);
 
 	freelc(coul);
