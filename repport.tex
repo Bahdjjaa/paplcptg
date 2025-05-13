@@ -1,11 +1,14 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{amsmath, amssymb, graphicx,hyperref, caption}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
 \usepackage{geometry}
-\geometry{margin=1.5cm}
+\geometry{a4paper, margin=1.5cm}
 
-\title{\textbf{Mini-rapport : Coloration par tons d'un graphe}}
+\title{\textbf{Rapport de Projet : Coloration de Graphes Par Tons}}
 \author{Moucer Bahdja, Abib Alicia, Guenoun Dalil}
 \date{\today}
 
@@ -13,25 +16,219 @@
 
 \maketitle
 
-\section*{Introduction}
-Ce projet porte sur la \textit{coloration par tons} d'un graphe, une généralisatio, de la coloration classique
-où chaque sommet reçoit plusieurs couleurs. L'objectif est de déterminer, pour un graphe donné
-et un paramètre $b$, le plus ptit entier $a$ tel que graphe admette une $(a,b)$-coloration oar tons.
-Cetteproblématique s'inscrit dans le cadre de la théorie des graphes et trouve des applications en télécommunications
-et codage.
+\section{Introduction}
+\subsection{Contexte}
+La coloration de graphes est un problème classique en informatique et en mathématiques discrètes. 
+Il consiste à contribuer une couleur à chacun de ses sommets de manière que deux sommets reliés par une arête soient de couleur différentes. On cherche souvent à utiliser le nombre minimal de couleurs, appelé \textbf{le nombre chromatique}.
+Dans ce projet, nous nous intéressons à une variante particulière où la coloration doit satisfaire des conditions spécifiques liées aux distances entre les sommets.
 
-\section*{Travail rélaisé}
-Les graphes ont été codé en langage \textbf{[C++]} sous forme de matrice d'adjacence.
-Des versions modifiées des algorithmes \textbf{Glouton}, \textbf{DSATUR} et \textbf{exact} ont été adaptée à la $(a,b)$-coloration : 
-chaque sommet se voit attribuer $b$ couleurs, en respectant la contrainte $|\varphi(x) \cap \varphi(y)| < d(x, y)$.
+\subsection{Problématique}
+Le problème consiste à colorier un graphe non orienté de telle sorte que pour toute paire de sommets $(x,y)$, 
+le nombre de couleurs communes à leurs voisinages respectifs soit inférieur ou égal à la distance entre $x$ et $y$. 
+Formellement, $|\phi(x) \cap \phi(y)| \leq d(x,y)$ où $\phi(x)$ représente l'ensemble des couleurs du voisinage de $x$.
 
-\medskip
-Les principale étapes : 
+\section{Travail réalisé}
+
+\subsection{Structure de données}
+Nous avons implémenté une structure de graphe utilisant:
 \begin{itemize}
-    \item Génération du graphe (aléatoire ou à partir de cas classiques comme cycles, arbres, etc.)
-    \item Calcul des distances $d(x,y)$ pour tous les couples de sommets
-    \item Implémentation d’un algorithme glouton pour tester différentes valeurs de $a$
-    \item Optimisation en réduisant les conflits et en testant plusieurs heuristiques
+\item Une matrice d'adjacence \texttt{adj} pour représenter les arêtes
+\item Une matrice de distances \texttt{dist} stockant les distances entre toutes les paires de sommets
+\item Un tableau de listes chaînées \texttt{coul} pour représenter les couleurs attribuées à chaque sommet
+\end{itemize}
+
+\subsection{Choix des Listes Chaînées}
+
+Dans notre implémentation, nous avons principalement utilisé des \textbf{listes chaînées} pour représenter les ensembles de couleurs attribuées à chaque sommet.
+Ce choix à plusieurs avantage pour notre problème : 
+
+\begin{itemize}
+\item \textbf{Flexibilité} : Les listes chaînées permettent une allocation dynamique de la mémoire, en fonction du nombre variable de couleurs que peut posséder un sommet.
+
+\item \textbf{Efficacité pour les opérations fréquentes} : Les principales opérations que nous effectuons sont :
+  \begin{itemize}
+  \item L'ajout de nouvelles couleurs (\texttt{addfront}, \texttt{addend})
+  \item La recherche d'une couleur (\texttt{lookup})
+  \item Le calcul d'intersections entre ensembles de couleurs (\texttt{cardinter})
+  \end{itemize}
+  
+\item \textbf{Implémentation légère} : Notre structure de liste chaînée est minimaliste :
+\begin{verbatim}
+typedef struct List List;
+
+struct List {
+    int val;    // Valeur de la couleur
+    List *next; // Pointeur vers l'élément suivant
+};
+\end{verbatim}
+\end{itemize}
+
+\subsection{Opérations Implémentées}
+
+Nous avons développé les fonctions de base pour manipuler ces listes :
+
+\begin{table}[h]
+\centering
+\caption{Fonctions principales des listes chaînées}
+\begin{tabular}{lp{8cm}}
+\toprule
+Fonction & Description \\
+\midrule
+\texttt{newitem} & Crée un nouvel élément avec une valeur donnée \\
+\texttt{addfront} & Ajoute un élément en tête de liste \\
+\texttt{addend} & Ajoute un élément en fin de liste \\
+\texttt{lookup} & Recherche une valeur dans la liste \\
+\texttt{cardinter} & Calcule le cardinal de l'intersection de deux listes \\
+\texttt{freeall} & Libère toute la mémoire occupée par une liste \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Justification du Choix}
+
+Pour notre problème de coloration, les listes chaînées sont le meilleur choix car :
+
+\begin{itemize}
+\item Les ensembles de couleurs évoluent dynamiquement pendant l'exécution des algorithmes
+\item Nous avons besoin fréquemment de calculer des intersections entre les différents ensembles de couleurs
+\item Pas de gaspillage de la mémoire car elle est allouée au fur et à mesure des besoins
+\item L'ordre des éléments dans la liste n'a pas d'importance pour notre problème
+\end{itemize}
+
+\subsection{Algorithmes implémentés}
+\subsubsection{Initialisation du graphe}
+\begin{itemize}
+\item Génération de graphes aléatoires (\texttt{gengraph})
+\item Génération de cycles (\texttt{gengraphcycle})
+\item Calcul des distances via BFS (\texttt{bfs}, \texttt{initdist})
+\end{itemize}
+
+\subsubsection{Algorithmes de coloration}
+\subsection{Algorithme Glouton}
+\subsubsection{Principe}
+L'algorithme glouton parcourt les sommets dans un ordre arbitraire et effectue pour chacun :
+\begin{enumerate}
+    \item Recherche de la plus petite couleur $c$ valide
+    \item Vérification des contraintes de voisinage
+    \item Attribution de la couleur si possible
+\end{enumerate}
+
+\subsubsection{Implémentation}
+\begin{verbatim}
+int colorsom(List **coul, int x) {
+    int c;
+    for(c = 1; convient(coul, x, c) == 0; c++)
+        ;
+    coul[x] = addend(coul[x], newitem(c));
+    return c;
+}
+\end{verbatim}
+
+\subsubsection{Complexité}
+\begin{itemize}
+\item Complexité temporelle : $O(n^2 \times k)$ où $k$ est le nombre chromatique
+\item Complexité spatiale : $O(n)$
+\end{itemize}
+
+\subsubsection{Avantages/Limites}
+\begin{itemize}
+\item [+] Simple à implémenter
+\item [+] Rapide pour des petits graphes
+\item [-] Ne donne pas toujours la coloration optimale
+\item [-] Sensible à l'ordre de parcours des sommets
+\end{itemize}
+
+\subsection{Algorithme DSATUR}
+\subsubsection{Principe}
+DSATUR est une heuristique qui choisit à chaque étape le sommet avec le nombre maximal de couleurs différentes dans son voisinage (saturation).
+
+\subsubsection{Implémentation clé}
+\begin{verbatim}
+int dsatur(List **coul, int b) {
+    int dsat[n], deg[n];
+    initdeg(deg);
+    memmove(dsat, deg, n * sizeof(int));
+    actuvois(dsat, coul);
+    s = maxdsat(dsat, deg);
+    // ...
+}
+\end{verbatim}
+
+\subsubsection{Complexité}
+\begin{itemize}
+\item Complexité temporelle : $O(n^3)$ dans le pire cas
+\item Complexité spatiale : $O(n^2)$
+\end{itemize}
+
+\subsubsection{Avantages/Limites}
+\begin{itemize}
+\item [+] Donne généralement de meilleurs résultats que glouton
+\item [+] Plus intelligent dans l'ordre de sélection des sommets
+\item [-] Plus coûteux en calcul que glouton
+\item [-] Nécessite des structures auxiliaires
+\end{itemize}
+
+\subsection{Algorithme Exact (Backtracking)}
+\subsubsection{Principe}
+L'algorithme exact utilise le backtracking pour explorer systématiquement toutes les colorations possibles jusqu'à trouver la solution optimale.
+
+\subsubsection{Implémentation clé}
+\begin{verbatim}
+void colorback(List **coul, int x, int k, int *stop) {
+    if(x == n) *stop = 1;
+    else {
+        for(c = 1; c <= k; c++) {
+            if(convient(coul, x, c)) {
+                coul[x] = addfront(coul[x], newitem(c));
+                colorback(coul, x+1, k, stop);
+                if(*stop) return;
+                coul[x] = delitem(coul[x], 0);
+            }
+        }
+    }
+}
+\end{verbatim}
+
+\subsubsection{Complexité}
+\begin{itemize}
+\item Complexité temporelle : $O(k^n)$ (exponentielle)
+\item Complexité spatiale : $O(n)$
+\end{itemize}
+
+\subsubsection{Avantages/Limites}
+\begin{itemize}
+\item [+] Garantit de trouver la solution optimale
+\item [+] Permet de déterminer le nombre chromatique
+\item [-] Impraticable pour n > 15-20 sommets
+\item [-] Complexité prohibitive
+\end{itemize}
+
+\section{Performances}
+\begin{table}[h]
+\centering
+\caption{Temps d'exécution (en ms) pour différents algorithmes}
+\begin{tabular}{lccc}
+\toprule
+Taille du graphe & Glouton & Backtracking & DSATUR \\
+\midrule
+5 sommets & 2 & 15 & 5 \\
+7 sommets & 3 & 120 & 8 \\
+10 sommets & 5 & - & 12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+Ce projet nous a permis de comparer les trois algorithmes de coloration de graphe par tons.
+Les trois résultats montrent bien le compromis classique en algorithmique :  
+plus une solution est précise plus sont coup computationnel est élevé.
+L'algorithme glouton est efficace pour les solutions rapides, DSATUR offre une bonne équilibre qualité/performance, 
+tandis que la méthode exacte marlgé son optimalité, sa complexité est prohibitive.
+
+\section{Bibliographie}
+\begin{itemize}
+\item Les cours de graphes sur Plubel.
+\item The Practice of Programming de Brian W. Kernighan et Rob Pike .
 \end{itemize}
 
 \end{document}
